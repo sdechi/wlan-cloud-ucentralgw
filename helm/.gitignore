@@ -1,0 +1,6 @@
+*.swp
+resources/certs/*
+!resources/certs/README.md
+!resources/certs/cas/README.md
+resources/config/*
+!resources/config/README.md

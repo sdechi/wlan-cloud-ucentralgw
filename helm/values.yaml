@@ -1,0 +1,130 @@
+# System
+replicaCount: 1
+strategyType: Recreate
+
+nameOverride: ""
+fullnameOverride: ""
+
+images:
+  ucentralgw:
+    repository: tip-tip-wlan-cloud-ucentral.jfrog.io/ucentralgw
+    tag: master
+    pullPolicy: Always
+#    regcred:
+#      registry: tip-tip-wlan-cloud-ucentral.jfrog.io
+#      username: username
+#      password: password
+
+services:
+  ucentralgwl4:
+    type: ClusterIP
+    ports:
+      websocket:
+        servicePort: 15002
+        targetPort: 15002
+        protocol: TCP
+  ucentralgwl7:
+    type: NodePort
+    ports:
+      restapi:
+        servicePort: 16001
+        targetPort: 16001
+        protocol: TCP
+      fileuploader:
+        servicePort: 16003
+        targetPort: 16003
+        protocol: TCP
+
+checks:
+  ucentralgw:
+    liveness:
+      httpGet:
+        path: /
+        port: 15015
+    readiness:
+      httpGet:
+        path: /
+        port: 15015
+
+ingresses:
+  restapi:
+    enabled: true
+    annotations: {}
+      # kubernetes.io/ingress.class: nginx
+      # kubernetes.io/tls-acme: "true"
+    hosts:
+    - restapi.chart-example.local
+    paths:
+    - path: /
+      serviceName: ucentralgwl7
+      servicePort: restapi
+  fileuploader:
+    enabled: true
+    annotations: {}
+      # kubernetes.io/ingress.class: nginx
+      # kubernetes.io/tls-acme: "true"
+    hosts:
+    - fileuploader.chart-example.local
+    paths:
+    - path: /
+      serviceName: ucentralgwl7
+      servicePort: fileuploader
+
+volumes:
+  ucentralgw:
+    - name: config
+      mountPath: /ucentral-data/ucentral.properties
+      subPath: ucentral.properties
+      # Template below will be rendered in template
+      volumeDefinition: |
+        configMap:
+          name: {{ include "ucentralgw.fullname" . }}-config
+    - name: certs
+      mountPath: /ucentral-data/certs
+      volumeDefinition: |
+        secret:
+          secretName: {{ include "ucentralgw.fullname" . }}-certs
+    - name: certs-cas
+      mountPath: /ucentral-data/certs/cas
+      volumeDefinition: |
+        secret:
+          secretName: {{ include "ucentralgw.fullname" . }}-certs-cas
+    # Change this if you want to use another volume type
+    - name: persist
+      mountPath: /ucentral-data/persist
+      volumeDefinition: |
+        persistentVolumeClaim:
+          claimName: {{ template "ucentralgw.fullname" . }}-pvc
+
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # requests:
+  #  cpu: 100m
+  #  memory: 128Mi
+  # limits:
+  #  cpu: 100m
+  #  memory: 128Mi
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+persistence:
+  enabled: true
+  storageClassName: gp2
+  accessModes:
+    - ReadWriteOnce
+  size: 10Gi
+  annotations: {}
+
+# Application
+public_env_variables:
+  UCENTRAL_ROOT: /ucentral-data
+  UCENTRAL_CONFIG: /ucentral-data
+
+secret_env_variables: {}
